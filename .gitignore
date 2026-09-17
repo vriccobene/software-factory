@@ -1,7 +1,13 @@
-# Product repositories are cloned into the factory workspace at runtime.
-.code/
-
 # Local credentials and deployment-specific settings.
 .env
 .env.*
 !.env.example
+factory.yaml
+
+# Generated dependencies, builds, and run workspaces.
+node_modules/
+dist/
+.code/
+workspaces/
+secrets/
+diagnostics-*.log
