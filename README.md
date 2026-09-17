@@ -21,6 +21,7 @@ This repository currently contains the **approved design**, not the factory impl
 | [PDRs and evidence](docs/pdr-and-evidence.md) | PDR contract, versioning, tests, and review evidence |
 | [Operations](docs/operations.md) | VPS, integrations, agentic tools, quotas, and notifications |
 | [Pilot](docs/pilot.md) | Initial validation, gates, and deferred decisions |
+| [Interim OpenCode workflow](docs/opencode-interim.md) | Project-scoped agents and `/factory-run` command |
 | [Architecture decisions](docs/decisions/README.md) | Rationale for structural choices |
 
 ## Status

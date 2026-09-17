@@ -7,8 +7,9 @@ disable-model-invocation: true
 # Interim factory run
 
 Use this workflow only when the user asks to execute an approved PDR. Read
-`docs/claude-code-interim.md` or `docs/codex-interim.md`, according to the
-coding tool in use, before starting.
+`docs/claude-code-interim.md`, `docs/codex-interim.md`, or
+`docs/opencode-interim.md`, according to the coding tool in use, before
+starting.
 
 1. Obtain the approved PDR and its stable issue identifier from the user or an
    authorized source. When the PDR needs product context, inspect the relevant

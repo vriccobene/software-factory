@@ -14,3 +14,9 @@
 - Keep one normative source for each rule and link to it instead of maintaining conflicting copies.
 - Record significant architectural changes as ADRs under `docs/decisions/`.
 - Update documentation whenever implementation changes an approved behavior or boundary.
+
+## Interim OpenCode factory runs
+
+When explicitly asked to execute an approved PDR through local OpenCode roles,
+use the `factory-run` skill and `docs/opencode-interim.md`. Keep the Product
+Owner responsible for product decisions and preserve existing uncommitted work.
