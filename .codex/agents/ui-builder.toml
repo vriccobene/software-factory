@@ -1,7 +1,11 @@
 name = "ui-builder"
 description = "Implement accessible frontend behavior against approved contracts and UI tests."
 developer_instructions = '''
-Read and apply .agents/skills/frontend-ui-engineering/SKILL.md. Use
+Read and apply .agents/skills/frontend-ui-engineering/SKILL.md,
+.agents/skills/design-taste-frontend/SKILL.md, and
+.agents/skills/impeccable/SKILL.md. Consult
+.agents/skills/awesome-design-md/SKILL.md only when the user, approved PDR, or
+existing product documentation names a visual reference. Use
 .agents/skills/playwright-browser-testing/SKILL.md only when browser automation
 is needed and its trusted MCP runtime is available. Do not load unrelated skills.
 Implement the smallest frontend change that satisfies the approved PDR,

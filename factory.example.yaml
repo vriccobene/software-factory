@@ -1,0 +1,40 @@
+products:
+  demo:
+    repository:
+      url: https://github.com/your-organization/your-repository.git
+      baseBranch: main
+    paths:
+      repository: [package.json, tsconfig.json]
+      contracts: [contracts]
+      backend: [src/backend]
+      frontend: [src/frontend]
+      tests: [tests/backend]
+      ui-tests: [tests/ui]
+      infrastructure: [.github, docker]
+      documentation: [README.md, docs]
+    lifecycle:
+      setup:
+        network: true
+        docker: false
+        timeoutSeconds: 900
+      verify:
+        network: false
+        docker: false
+        timeoutSeconds: 1800
+execution:
+  auth: api-key
+  model: gpt-5-codex
+  image: software-factory-worker:latest
+  timeoutSeconds: 1800
+  maxEvidenceBytes: 200000
+  roleSkills:
+    feature-intake: [planning-and-task-breakdown]
+    backend-builder: [test-driven-development, debugging-and-error-recovery]
+    ui-builder: [frontend-ui-engineering, design-taste-frontend, impeccable, awesome-design-md, playwright-browser-testing]
+    observability-builder: [observability-and-instrumentation]
+    verifier: [code-review-and-quality]
+  roleModels:
+    feature-intake: gpt-6-astra
+    backend-builder: gpt-6-astra
+    observability-builder: gpt-6-astra
+    verifier: gpt-6-astra
