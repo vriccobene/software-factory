@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted — 2026-09-13
+Superseded in part by ADR-006 — 2026-09-14. External filesystem enforcement remains accepted;
+role-specific branches and worktrees are not part of the supervised MVP. The worker uses one
+Linear-derived working branch for the run.
 
 ## Context
 

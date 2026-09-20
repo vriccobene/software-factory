@@ -1,70 +1,72 @@
-# Roles and Isolation
+# Roles and Filesystem Isolation
 
-## Roster
+## Role roster
 
-| Role | Responsibility | Allowed writes |
+| Role | Responsibility | Writable group |
 |---|---|---|
-| `feature-intake` | Reviews the PDR and proposes the workflow | Plan and workflow proposal |
-| `contract-designer` | Defines a verifiable boundary between components | Contract and simulation |
-| `test-writer` | Writes backend tests, including black-box tests | Backend tests |
-| `backend-builder` | Implements logic, persistence, jobs, and APIs | Backend production code |
-| `ui-test-writer` | Writes UI component and end-to-end tests | UI and E2E tests |
-| `ui-builder` | Implements the frontend and contract integration | Frontend production code |
-| `infra-builder` | Implements repositories, environments, CI, and procedures | Declared infrastructure |
-| `security-auditor` | Finds vulnerabilities and policy violations without fixing them | None; produces findings |
-| `doc-keeper` | Aligns documentation with approved contracts | Documentation |
-| `verifier` | Assesses the diff and evidence against the criteria | None; produces a verdict |
+| `feature-intake` | Select the smallest relevant role set | none |
+| `contract-designer` | Define verifiable component boundaries | `contracts` |
+| `test-writer` | Derive backend tests from observable behavior | `tests` |
+| `backend-builder` | Implement backend behavior | `backend` |
+| `ui-test-writer` | Derive UI and end-to-end tests | `ui-tests` |
+| `ui-builder` | Implement frontend behavior | `frontend` |
+| `infra-builder` | Implement declared infrastructure and CI | `infrastructure` |
+| `observability-builder` | Design and implement telemetry through the existing observability system | `backend`, `frontend`, `infrastructure` |
+| `security-auditor` | Report security violations | none |
+| `doc-keeper` | Align documentation with approved behavior | `documentation` |
+| `verifier` | Return an evidence-based verdict | none |
 
-Roles are available capabilities, not a mandatory checklist. `feature-intake` proposes the
-relevant subset, and the PO approves the concrete DAG.
+`feature-intake` runs first. Its returned identifiers are schema-checked, de-duplicated, and ordered by
+the canonical roster. Intake and verifier cannot be selected as ordinary work roles; the launcher
+adds `verifier` last unconditionally.
 
-## Test and implementation separation
+The verifier's final message is machine-enforced JSON:
 
-Test authors do not receive implementation source code, implementer diffs and commits, or
-implementer conversations. They receive the approved PDR, public contract, relevant existing
-tests, synthetic data, visual references when required, and an application available through
-public interfaces. `ui-test-writer` also receives browser and Playwright access.
+```json
+{"verdict":"PASS","summary":"Concise evidence-based reason"}
+```
 
-Builders may read and run tests, but test directories are mounted read-only. When a test is
-wrong, the builder provides evidence and the appropriate test author owns the correction. A
-behavior change or weaker guarantee requires PO approval.
+Only `PASS` permits deterministic project verification to begin. `FAIL`, missing output, malformed
+JSON, or an unsupported verdict fails the run.
 
-This separation makes tests derive from required behavior instead of implementation structure.
-Tests may use public APIs and interfaces; not every test must be end-to-end.
+## Enforcement
 
-## Layered enforcement
+Each role receives a new Docker container with:
 
-Each execution uses complementary controls:
+- an unprivileged UID;
+- a read-only root filesystem;
+- all Linux capabilities dropped;
+- `no-new-privileges`;
+- bounded temporary filesystems;
+- no Docker socket;
+- only explicitly configured bind mounts.
 
-1. The worker materializes only the inputs visible to the role.
-2. An ephemeral container isolates processes and filesystems.
-3. Explicit mounts distinguish writable, read-only, and absent areas.
-4. Network access is denied by default and allowed per destination.
-5. The tool's sandbox applies another permission layer.
-6. The orchestrator rejects diffs outside allowed paths.
-7. Dedicated branches and worktrees isolate and attribute role changes.
+Visible groups are mounted below `/role/workspace`. Writable groups use read-write mounts; every
+other visible group is read-only; unlisted groups are absent. Duplicate mount targets, escaping
+paths, unsafe image names, unsafe environment names, and targets outside `/role` are rejected before
+Docker starts.
 
-A violation is not fixed by widening the running agent's permissions. Work is assigned to the
-owning role, or the workflow returns to the PO for approval.
+Provider network access is an explicit exception: Codex role containers use Docker bridge networking
+so they can reach the OpenAI API. The default isolation helper otherwise disables networking.
 
-## Skills and tools
+## Skills, models, and browser access
 
-Each role profile explicitly lists available skills and tools. Test authors do not receive
-skills that modify production code; builders cannot write tests. UI agents and `verifier` may
-use Playwright and a browser. `verifier` may read the complete diff and all tests but cannot
-modify them.
+Trusted `factory.yaml` assigns skills and model IDs independently per role. Only assigned skill
+directories are mounted, read-only, under `/role/skills`; see
+[Role skills and models](role-skills-and-models.md).
 
-Native Codex, Claude Code, and OpenCode configuration is an adapter detail. Containers, mounts,
-network policy, and external diff validation enforce the real boundaries. Prompt instructions
-are never treated as a security control.
+Only `ui-builder` and `ui-test-writer` can receive browser automation. Each gets a temporary,
+private-network [Playwright MCP sidecar](browser-sidecars.md) without a Docker socket, repository
+mount, credentials, host port, or persistent browser profile.
 
-## Production
+## Test/code separation
 
-Agents receive no production database, shell, cloud console, object storage, or application
-secrets. They may perform black-box checks through public browser and API surfaces, optionally
-with a least-privileged synthetic account. The PDR declares the allowed checks and effects.
+Backend and UI test writers do not receive the corresponding production source group. Builders can
+read their tests but cannot modify them. The verifier and security auditor can read all configured
+groups and cannot write any of them. The observability builder runs after selected production and
+infrastructure builders. It can read all configured groups but can write only backend, frontend, and
+infrastructure paths; it cannot modify tests, UI tests, contracts, or documentation.
 
-Product observability is read-only during post-deployment checks, post-flag-change checks, or
-checks requested by the PO. The product must never place sensitive data in metrics, logs, or
-traces. Agents report anomalies with evidence and proposals; they cannot change alerts,
-configuration, or data.
+All roles work on the Linear-derived branch `<creator-username>/<identifier>-<title>`. Changes are shared through the host workspace between sequential role invocations. Docker mount
+permissions are the write-enforcement mechanism; there is no role branch, worktree, patch-transfer,
+or commit-merging layer.

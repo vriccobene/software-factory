@@ -1,90 +1,98 @@
-# Operations and Integrations
+# Operations
 
-## External integrations
+## Runtime
 
-- **Linear:** PDR input, queue, priority, dependencies, and visible status.
-- **GitHub:** repositories, branches, contracts, tests, pull requests, and evidence.
-- **Slack:** task threads, questions, notifications, summaries, and explicit approvals.
+Docker Compose starts PostgreSQL, the API, and one worker. The CLI is an on-demand Compose profile.
+The worker starts an additional hardened container for every role through the host Docker socket.
 
-Agents read only the data their role needs. For writes, they produce a structured request. The
-orchestrator checks the role, task, version, and permission before calling the external service.
-Tokens do not enter agent context.
+The complete setup and run procedure is maintained in the [README](../README.md#setup-step-by-step).
+Always use `./bin/factory-preflight` before startup. The wrappers derive the Docker socket GID at
+runtime, so an accidentally exported or stale `DOCKER_GID` cannot configure the worker incorrectly.
 
-Slack conversation may remain free-form, but only an explicit action tied to an object, version,
-and consequence triggers a transition. PDR, workflow, merge, release, and flag approvals are
-separate actions. A late or duplicate response cannot apply to a new decision.
+## Run operations
 
-## Agentic tools
+Add the repository's absolute `bin` directory to `PATH`, or prefix commands with `./bin/`. Start an
+approved Linear issue using its stable identifier; `bikelyo` is the script's default product:
 
-A role may use **Codex**, **Claude Code**, or **OpenCode**. The orchestrator protocol exposes no
-vendor-specific concepts. It normalizes at least the request, events, structured result, usage,
-checkpoint, and permission decision. Each adapter translates profiles, models, skills, sandbox
-settings, and events to and from its tool's format.
+```bash
+factory-start BIK-123
+```
 
-Codex and Claude Code document non-interactive execution, machine-readable output, model
-selection, session resumption, and permission-aware profiles or agents. OpenCode documents
-programmatic CLI execution, agent profiles with per-role models and permissions, and controlled
-skill access. These features support adapters but never replace external factory isolation.
+The returned UUID is the factory run identifier, not the Linear identifier. Use the CLI for normal
+operations instead of querying PostgreSQL:
 
-Official references reviewed during design:
+```bash
+factory-list
+factory-list --all --limit 20
+factory-list --status PAUSED_QUOTA
+factory-status RUN_UUID
+factory-watch RUN_UUID 2
+```
 
-- [Codex non-interactive mode](https://learn.chatgpt.com/docs/non-interactive-mode)
-- [Codex CLI commands](https://learn.chatgpt.com/docs/developer-commands?surface=cli#codex-exec)
-- [Claude Code headless mode](https://code.claude.com/docs/en/headless)
-- [Claude Code CLI commands](https://code.claude.com/docs/en/cli-usage)
-- [OpenCode CLI](https://opencode.ai/docs/cli/)
-- [OpenCode agents](https://opencode.ai/docs/agents/)
-- [OpenCode permissions](https://opencode.ai/docs/permissions/)
+`list` defaults to the active states `QUEUED`, `PREPARING`, `RUNNING`, and `PAUSED_QUOTA`. Exact
+state filters are case-insensitive in the CLI. `watch` prints only changes and exits on `SUCCEEDED`
+or `FAILED`; Ctrl-C stops watching but does not stop the worker or run. Diagnose the worker with:
 
-Model availability depends on the account and provider. If a configured model is unavailable,
-the work enters `needs_attention` and asks the PO to correct `factory.yaml`. There is no automatic
-fallback to another model or provider.
+The wrapper scripts execute `dist/cli/main.js` inside the already-running API container. Routine
+commands therefore create no disposable CLI container. Start the stack with `factory-up` first; a
+stopped API produces an explicit Compose service-not-running error.
 
-The pilot validates at least two adapters with the same conformance test. OpenCode belongs to
-the supported candidate list; initial adapters and models are selected during pilot preparation.
+```bash
+docker compose ps
+factory-logs
+```
 
-## Quotas, costs, and timeouts
+## Secrets
 
-A temporary quota limit moves the task to `awaiting_capacity`: the factory saves its state and
-checkpoint and resumes automatically when capacity returns. This is not treated as a code defect
-and does not consume a correction cycle.
+`.env` is the local secret store and is ignored by Git. It contains:
 
-During the pilot, the PO closely monitors executions without automatic caps. The factory measures
-duration, provider-reported tokens or usage, estimated cost, and human interventions. Before
-unattended operation, timeout and spending limits based on this evidence become mandatory. A
-spending cap does not authorize expenditure; it only defines when execution must stop.
+- `LINEAR_API_KEY` for read-only issue queries;
+- `OPENAI_API_KEY` for API key mode only;
+- `GITHUB_APP_ID` and `GITHUB_APP_INSTALLATION_ID`, which identify the repository-scoped App;
+- `GITHUB_APP_PRIVATE_KEY_PATH`, the host path mounted as a worker-only Docker secret;
+- `PROTECTED_BRANCHES`, a comma-separated denylist with `main,staging,dev` as its safe default;
+- `QUOTA_MAX_ATTEMPTS`, the maximum automatic quota resumptions, defaulting to `8`;
+- local Docker, database, and port settings.
+
+The worker signs a short-lived App JWT and exchanges it for a fresh installation token before clone
+and again before push, requesting only Contents write and Metadata read. Only each Git subprocess
+receives its installation token through `GIT_ASKPASS`; unrelated worker secrets, role containers,
+and lifecycle containers receive neither the PEM nor a GitHub token. PDR text, logs, and evidence
+must never contain credentials. In API key mode, the OpenAI key is forwarded to role containers.
+In ChatGPT mode, the worker imports the official Codex login cache from a Compose secret into
+`workspaces/.codex-auth`, which is ignored by Git and accessible only to Codex role containers.
+The cache is writable so Codex can persist token refreshes; treat it as a password. Use
+`factory-up-chatgpt` after a new host login to import a newer cache. This mode does not forward
+`OPENAI_API_KEY` to roles. Credential proxying is not implemented.
+
+Local Compose file secrets retain their host ownership. The worker entrypoint therefore starts as
+root only long enough to copy the mounted PEM to an internal `0600` file owned by UID 10001, then
+uses `setpriv` to execute the worker as UID/GID 10001. It retains the supplementary Docker socket
+group configured by `DOCKER_GID`; the Node worker itself never runs as root.
+
+Lifecycle containers receive none of these factory environment variables. Network and Docker access
+are independent, fail-closed product capabilities. Docker access mounts the host daemon socket and
+is therefore equivalent to host-level authority for the trusted hook.
 
 ## Persistence and recovery
 
-PostgreSQL stores the task, role, state, attempt, PDR/workflow/configuration revisions, approvals,
-open decisions, artifact references, duration, usage, and summarized errors.
+PostgreSQL data lives in the `factory-db` Compose volume. Checkouts live in the host `workspaces/`
+directory, while successful results are also durable on their remote review branches. Ordinary
+`docker compose down` and restart preserve local state.
 
-The factory does not retain every prompt, response, video, or full trace. Heavy artifacts exist
-only as required evidence or targeted failure diagnostics. Profiles and skills are identified by
-version or hash.
+Quota-limited runs enter `PAUSED_QUOTA`; no agent container is kept alive. PostgreSQL stores their
+checkpoint and `resumeAt`, and the worker later reclaims the same run and workspace. Completed setup
+and roles are skipped. A role interrupted mid-execution starts a fresh provider session against the
+existing Git workspace unless that provider adapter supplies a continuation token. After the
+configured attempt limit, the run fails. Runs unexpectedly interrupted in `PREPARING` or `RUNNING`
+still become `FAILED` on worker restart.
 
-After restart, the orchestrator compares PostgreSQL, Linear, and GitHub before resuming. It never
-repeats an external effect without an idempotency key or an outcome check. If the actual outcome
-cannot be established safely, the work remains suspended.
+## Current limits
 
-V1 does not build dedicated backup or disaster recovery. Complete VPS loss may require manual
-reconstruction; this is an accepted pilot limitation.
-
-## Communication
-
-Each task has a Slack thread and one initial contact. A blocking message contains context, a
-proposal, and consequences. Blocking questions and issues requiring intervention are sent
-immediately, without overnight reminders.
-
-At 09:00 `Europe/Berlin`, the factory posts a daily summary of results, waits, and decisions;
-details remain available in Linear. Future deployments may route conversations to separate PM,
-Engineering Lead, or other responsible contacts.
-
-## Release and checks
-
-The separate operations service receives an immutable proposal and approval and may perform a
-deployment, rollback, or feature flag change. Agents never receive its credentials. After a
-deployment, flag change, or PO request, the factory runs black-box checks and reads observability.
-
-V1 does not act autonomously on anomalies. It gathers evidence and proposes an action. Rollback
-and corrective flag shutdown also require approval.
+- Codex is the only implemented coding provider.
+- Network access is Docker bridge access, not a destination allowlist.
+- Target repositories must implement the two-hook [project contract](project-contract.md).
+- Evidence is byte-bounded and may be truncated.
+- One worker processes runs sequentially.
+- The factory's only GitHub write is a non-force push to the validated Linear-derived branch after
+  all verification gates pass. It does not create pull requests or modify protected branches.

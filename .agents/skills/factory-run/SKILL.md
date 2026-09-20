@@ -28,10 +28,14 @@ starting.
    Remove duplicates and keep the role set as small as possible. Run
    `contract-designer` first when selected. The default is sequential execution
    in this order: `test-writer`, `backend-builder`, `ui-test-writer`, `ui-builder`,
-   `infra-builder`, `security-auditor`, `doc-keeper`. When backend and frontend
-   work are independent after the contract is defined, the coordinator may run
-   two lanes concurrently: `test-writer` then `backend-builder`, and
-   `ui-test-writer` then `ui-builder`. Each lane must start from the same complete
+   `infra-builder`, `observability-builder`, `security-auditor`, `doc-keeper`.
+   Run `observability-builder` after the production and infrastructure roles it
+   must assess. It implements instrumentation only through an observability
+   system already present in the product; otherwise it reports the design and
+   limitation without changing code.
+   When backend and frontend work are independent after the contract is defined,
+   the coordinator may run two lanes concurrently: `test-writer` then
+   `backend-builder`, and `ui-test-writer` then `ui-builder`. Each lane must start from the same complete
    post-contract snapshot in a separate workspace, own disjoint edit paths, and
    keep its roles sequential. Do not run writer roles concurrently in one
    checkout. If a common snapshot or clean integration cannot be guaranteed,
@@ -44,10 +48,24 @@ starting.
    failures such as new tests awaiting implementation. Inspect `git status --short`
    and the diff after each role. Reject or repair changes outside the
    declared scope before continuing. Stop on an unresolved role failure.
-6. Invoke `verifier` last, with the PDR, changed files, role evidence, and check
-   results. Parse its JSON. A missing or malformed verdict, or `FAIL`, stops the
-   run. Do not turn a failure into PASS by assertion.
-7. After PASS, run the target repository's `factory/verify` independently on the
+6. Invoke `verifier` after the selected roles, with the PDR, changed files,
+   role evidence, check results, and the run-start test baseline needed to
+   identify protected tests that predate the current PDR. Parse its JSON. A
+   missing or malformed verdict stops the run. On `FAIL`, preserve its findings
+   and all completed work, then invoke `feature-intake` again with the failed
+   criteria and current evidence. Intake selects only the roles needed for the
+   next cycle; run them in canonical order and invoke a fresh verifier. Do not
+   restart completed unrelated roles or treat an earlier verdict as the current
+   verdict. Repeat while authorized work can address the failure. If a decision,
+   dependency, environment, or evidence source outside the run is required,
+   record the precise blocker and stop without claiming PASS. Also stop a cycle
+   that makes no progress; preserve its checkpoint for a later resumption. If
+   the agents cannot resolve a protected test change or rule out regressions,
+   notify the Product Owner in the end-of-session handoff before any final
+   commit or publication. Never invent product approval or weaken checks to
+   escape a FAIL.
+7. Only after the latest verifier returns PASS, run the target repository's
+   `factory/verify` independently on the
    integrated workspace, once no writer is active. A nonzero exit or Git-visible
    modification is a failure. Review the final diff and report the exact checks
    and any limitations. A focused check or a role-level verification never
