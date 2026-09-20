@@ -1,72 +1,67 @@
 # Architecture
 
-## Goal and boundaries
+## Current shape
 
-The factory performs authorized software work while the PO is occupied elsewhere. It receives
-approved PDRs, selects the relevant roles, isolates their executions, persists state, and
-produces a reviewable proposal. V1 covers product features and infrastructure, including
-repositories, environments, CI, and release procedures.
-
-The factory does not create priorities or new PDRs autonomously. The PO supplies an explicit
-queue and approves PDRs and dependencies. Automatic goal decomposition and automatic design of
-new user experiences remain future capabilities.
-
-## Components
+The factory is a supervised local launcher, not a general-purpose orchestration platform.
 
 ```mermaid
 flowchart LR
-    PO[Product Owner] -->|PDRs and priorities| Linear
-    Linear --> Orchestrator[Orchestrator]
-    Orchestrator --> Postgres[(PostgreSQL)]
-    Orchestrator --> Workers[Isolated workers]
-    Workers --> Repos[Repositories and worktrees]
-    Orchestrator --> GitHub
-    Orchestrator --> Slack
-    Orchestrator --> Ops[Authorized operations service]
-    Workers -->|public checks| Staging[Staging / product]
+    PO[Product Owner] -->|approved PDR| Linear
+    CLI --> API
+    API -->|read issue| Linear
+    API --> DB[(PostgreSQL)]
+    Worker --> DB
+    Worker -->|clone configured repository| Git[Git remote]
+    Worker -->|fixed lifecycle hooks| Lifecycle[Trusted lifecycle container]
+    Worker -->|provider adapter + fixed Docker arguments| Role[Isolated coding-agent role container]
+    Lifecycle -->|complete workspace| Workspace
+    Role -->|allowed mounts only| Workspace[Run workspace]
+    UIRole[UI role only] -->|private MCP network| Browser[Ephemeral Playwright sidecar]
 ```
 
-- **Orchestrator:** applies transitions, dependencies, approvals, attempts, and recovery. It
-  does not interpret requirements or make product decisions.
-- **Worker:** starts one agentic invocation in an ephemeral environment built from a role
-  profile.
-- **PostgreSQL:** stores technical state, approved snapshots, attempts, and focused diagnostics.
-- **Operations service:** holds credentials for deployments, rollbacks, and feature flags and
-  performs only predefined operations tied to a precise approval.
+- **API:** validates a start request, resolves the Linear issue, hashes its immutable snapshot, and
+  creates a queued run.
+- **Worker:** claims queued and due quota-paused runs, launches roles in order, and stores bounded
+  evidence and resumable checkpoints.
+- **Codex integration:** asks `feature-intake` for the smallest relevant role set, invokes those
+  roles, and always invokes `verifier` last.
+- **Lifecycle container:** runs repository-owned setup and deterministic verification hooks with
+  explicitly configured network and Docker capabilities and no forwarded factory credentials.
+- **Role container:** receives only declared repository mounts, runs as an unprivileged user with a
+  read-only root filesystem, dropped capabilities, and no privilege escalation.
+- **Browser sidecar:** exists only for a UI role, provides headless Chromium through a private MCP
+  endpoint, receives no repository or secrets, and is removed with its dedicated network afterward.
+- **PostgreSQL:** stores run state, the PDR snapshot, evidence, checkpoints, quota attempts, and the
+  next resume instant.
+- **CLI:** starts a run and reads its current state through the API.
 
-The VPS initially runs the orchestrator, workers, and PostgreSQL in containers started by one
-script. V1 has no automated disaster recovery for complete VPS loss. A normal restart must
-recover persisted work correctly.
+## Trust boundaries
 
-## Systems of record
+`factory.yaml` is trusted operator input. It selects the repository, base branch, model, image, and
+literal path groups. Linear PDR text is untrusted requirements data and cannot select repositories,
+paths, commands, credentials, or permissions.
 
-| Information | System of record |
-|---|---|
-| Editable PDR, priority, dependencies, and visible status | Linear |
-| Exact approved PDR snapshot | PostgreSQL |
-| Code, contracts, tests, and revision evidence | GitHub |
-| Execution state, attempts, and normalized approvals | PostgreSQL |
-| Conversations and notifications | Slack |
+The worker is trusted and receives the Docker socket. Agent containers never receive that socket.
+Each role gets a separate container. Visible paths are mounted read-only unless the role policy
+explicitly grants write access. Unlisted paths are absent.
 
-The pull request includes a comment with the executed PDR, snapshot identifier, and hash. This
-copy helps reviewers but does not replace the internal snapshot because a comment can be edited
-or deleted.
+Trusted per-role configuration also selects read-only skills and an opaque provider model ID. UI
+roles may receive the isolated [Playwright sidecar](browser-sidecars.md); other roles cannot reach
+its per-role network.
 
-When systems disagree, the orchestrator suspends the affected work instead of guessing. Before
-each transition, it fetches the PDR from Linear and compares its hash with the approved snapshot.
+Provider access requires bridge networking. In API key mode a role receives `OPENAI_API_KEY`; in
+ChatGPT mode it receives a dedicated writable Codex login cache. Credentials are not placed in the
+prompt or stored as evidence, but a role process can read its assigned credential. Stronger
+credential mediation is deferred.
 
-## Configuration
+Lifecycle hooks are trusted repository code but still run in separate containers. They receive the
+complete workspace because dependency preparation and project-wide verification cross role path
+groups. Docker authority is disabled by default; when enabled, it is a documented exception capable
+of controlling the host daemon.
 
-The version-controlled `factory.yaml` describes products and repositories, role/tool/model
-assignments, skills, tools, filesystem access, network access, and non-secret operational
-settings. The untracked `.env` contains credentials and VPS-specific values; `.env.example`
-will document the variables without sensitive values.
+## Deliberately absent
 
-An idempotent script validates both inputs and generates tool-specific profiles. Running it
-installs a new configuration revision. Active executions keep their existing revision. Applying
-a new revision to active work requires suspension and an explicit restart from an appropriate
-checkpoint.
-
-V1 operates on one product at a time, but every record includes a product identifier. A product
-declares one or more repositories cloned as `.code/<repository>`. Names and paths come from
-trusted configuration, never from untrusted PDR text.
+There is no custom DAG engine, full cross-provider event protocol, mid-turn checkpoint guarantee,
+Slack integration, pull-request creation, deployment, release, or unattended approval system.
+Quota outcomes and optional continuation identifiers use a small provider-neutral boundary; richer
+provider capabilities remain deferred until supervised pilots demonstrate a concrete need.

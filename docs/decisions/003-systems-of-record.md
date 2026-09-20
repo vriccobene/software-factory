@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted — 2026-09-13
+Deferred by ADR-006 — 2026-09-14. The supervised MVP currently uses Linear, PostgreSQL, and a local
+workspace; GitHub writes and Slack are not implemented.
 
 ## Context
 
