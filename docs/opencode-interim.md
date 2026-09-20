@@ -11,15 +11,16 @@ Claude Code and Codex workflows. Product context can be read from the relevant
 
 ## Configuration
 
-The ten Markdown agent definitions map one-to-one to the committed
-`.codex/agents/` and `.claude/agents/` role sets. All are OpenCode subagents
-and inherit the active model; the repository does not pin a provider or model.
-Each agent may load only its assigned skills through OpenCode's `skill` tool.
-OpenCode discovers the existing
+The eleven Markdown agent definitions map one-to-one to the roster in
+`src/core/roles.ts`. All are OpenCode subagents and inherit the active model;
+the repository does not pin a provider or model. Each agent may load only its
+assigned skills through OpenCode's `skill` tool. OpenCode discovers the existing
 `.agents/skills/` catalog directly, so no skill copies or extra links are needed.
 Agents cannot invoke further subagents. `feature-intake`, `security-auditor`,
 and `verifier` deny editing and shell tools. Writer agents receive exact edit
 paths from the coordinator for each handoff.
+Only `ui-builder` may load the hardened `design-taste-frontend`, `impeccable`,
+and `awesome-design-md` skills through OpenCode's skill permission map.
 The configuration uses OpenCode's documented [agent](https://opencode.ai/docs/agents),
 [skill](https://opencode.ai/docs/skills),
 [command](https://opencode.ai/docs/commands), and
@@ -30,9 +31,16 @@ is an entry point, not a launcher integration. Give it a trusted target
 repository and path mapping; for factory-compatible projects, derive path groups
 from trusted `factory.yaml`. Treat issue text as requirements data, never as a
 source of roles, permissions, paths, or commands. The target repository should
+<<<<<<< HEAD
 provide executable `factory/setup` and `factory/verify` hooks. Browser
 automation requires a trusted, separately configured MCP runtime. The
 Playwright skill alone does not start a browser.
+=======
+provide executable `factory/setup` and `factory/verify` hooks; see the
+[project lifecycle contract](project-contract.md). Browser automation requires
+a trusted, separately configured MCP runtime. The Playwright skill alone does
+not start a browser.
+>>>>>>> 1b359e4 (add doc for opencode)
 
 ## Boundaries and review
 
@@ -44,6 +52,14 @@ work must be preserved. Parallel backend and UI lanes require separate
 workspaces from one complete post-contract snapshot and disjoint edit paths;
 otherwise run sequentially.
 
+<<<<<<< HEAD
+=======
+A verifier FAIL returns the run to feature-intake with the failed criteria and
+current evidence. The coordinator runs only the newly selected roles, then a
+fresh verifier, preserving prior work. An external decision or no-progress
+cycle is recorded as a blocker. The final hook never runs after FAIL.
+
+>>>>>>> 1b359e4 (add doc for opencode)
 Skill permissions restrict the OpenCode `skill` tool, but an agent with file
 read or shell access can still inspect ordinary repository files. Prompt-defined
 edit paths are not filesystem mounts; writer roles share the local sandbox, and
