@@ -486,3 +486,11 @@ used when that data is intentionally disposable.
 | [Browser sidecars](docs/browser-sidecars.md) | Isolated Playwright MCP access for UI roles |
 | [Pilot](docs/pilot.md) | Codex and Claude Code pilot gates |
 | [Architecture decisions](docs/decisions/README.md) | Historical and current architectural rationale |
+
+## Status
+The design is approved. The pilot preparation will determine the real PDRs, models per role,
+operational limits, VPS sizing, observability platform, and some feature flag details. These are
+explicit gates in [Pilot](docs/pilot.md), not implicit assumptions.
+
+Product repositories are cloned below `.code/<repository>`. A product configuration may declare
+multiple repositories; v1 runs work for one product at a time.

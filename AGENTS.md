@@ -45,3 +45,8 @@ When explicitly asked to execute an approved PDR through local Codex or OpenCode
 roles, use the `factory-run` skill and the matching interim guide under `docs/`.
 Keep the Product Owner responsible for product decisions and preserve existing
 uncommitted work.
+## Interim OpenCode factory runs
+
+When explicitly asked to execute an approved PDR through local OpenCode roles,
+use the `factory-run` skill and `docs/opencode-interim.md`. Keep the Product
+Owner responsible for product decisions and preserve existing uncommitted work.
