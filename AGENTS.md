@@ -39,6 +39,25 @@ When a run originates from a Linear issue, use the branch format
 `<creator-username>/<identifier>-<title>`, normalized to lowercase kebab case. For example,
 `alex/eng-123-fix-login-error`. Do not substitute a generic `feature/` or `fix/` prefix.
 
+## GitHub access for role agents
+
+Role agents must not use personal SSH keys or `gh` credentials to reach GitHub.
+Product checkouts under `.code/<product>/` point `origin` at an SSH URL for human
+use only; a plain `git fetch` there will fail for an agent (no authorized SSH
+identity is available in the agent environment) and must not be worked around
+with personal credentials.
+
+To update a local product checkout, use the GitHub App client instead:
+
+```
+./bin/github-app fetch <org>/<repo> <absolute-checkout-path> <ref>
+```
+
+This lands the ref at `refs/remotes/app/<ref>` without touching `origin`, moving
+any local branch, or requiring a personal credential. See
+[docs/github-app-access.md](docs/github-app-access.md) and
+[ADR 009](docs/decisions/009-github-app-credentials.md).
+
 ## Interim factory runs
 
 When explicitly asked to execute an approved PDR through local Codex or OpenCode
