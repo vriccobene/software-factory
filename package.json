@@ -1,0 +1,33 @@
+{
+  "name": "software-factory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@10.9.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx --test tests/**/*.test.ts",
+    "test:isolation": "RUN_DOCKER_ISOLATION=1 node --import tsx --test tests/docker-*.test.ts",
+    "test:browser": "RUN_DOCKER_BROWSER=1 node --import tsx --test tests/docker-browser.test.ts",
+    "start:api": "node dist/api/main.js",
+    "start:worker": "node dist/worker/main.js",
+    "cli": "node dist/cli/main.js",
+    "ui:dev": "node src/opencode-ui/server.mjs",
+    "test:ui": "node --test tests/opencode-ui.test.mjs"
+  },
+  "dependencies": {
+    "pg": "^8.13.1",
+    "yaml": "^2.6.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

@@ -458,6 +458,28 @@ factory-down
 This preserves PostgreSQL data. `docker compose down -v` deletes database state and should only be
 used when that data is intentionally disposable.
 
+## Local OpenCode web UI (preview)
+
+The [OpenCode UI specification](docs/opencode-ui-spec.md) describes the separate local interface for the interim OpenCode workflow. It does not use the containerized factory API or Linear issue input.
+
+Start OpenCode from this repository root so its project-scoped `/factory-run` command and agents are loaded:
+
+```bash
+opencode serve --hostname 127.0.0.1 --port 4096
+```
+
+In another terminal run:
+
+```bash
+npm run ui:dev
+```
+
+Open `http://127.0.0.1:4173`. If OpenCode is password protected, set `OPENCODE_SERVER_PASSWORD` for the UI process too. `OPENCODE_URL` and `OPENCODE_UI_PORT` may override their loopback defaults. Register a local Git checkout by browsing folders or entering a path; it must contain executable `factory/setup` and `factory/verify`, then enter an approved PDR as Markdown, upload a file, or give its absolute local path.
+
+The UI stores project paths, PDR snapshots, run metadata and bounded OpenCode evidence under ignored `.opencode-ui-data/`. Each run uses a detached Git worktree there, leaving existing checkout changes in place. The parallel limit defaults to one and can be raised explicitly on the Projects page. The UI does not publish changes. Review the worktree and final gates before accepting a run.
+
+This is a preview until tested with the installed OpenCode version. The local environment used for development did not have `opencode` installed, so live question and permission handling and final gate interpretation remain unverified. The UI labels a returned command as **Run ended**, never as a verified success. A final transcript mention of `factory/verify` is evidence to inspect, not a deterministic proof of its exit status.
+
 ## Development commands
 
 | Command | Purpose |

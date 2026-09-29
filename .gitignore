@@ -11,3 +11,5 @@ dist/
 workspaces/
 secrets/
 diagnostics-*.log
+
+.opencode-ui-data/

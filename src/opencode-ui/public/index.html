@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Factory · OpenCode</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" type="module"></script>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Primary navigation">
+      <div class="brand"><div class="brand-mark" aria-hidden="true">F<span>·</span></div><div><strong>Factory</strong><small>OPENCODE CONTROL</small></div></div>
+      <nav class="nav"><button id="nav-overview" class="nav-item active" type="button"><span aria-hidden="true">◫</span> Overview</button><button id="nav-new" class="nav-item" type="button"><span aria-hidden="true">＋</span> New run</button><button id="nav-projects" class="nav-item" type="button"><span aria-hidden="true">▤</span> Projects</button></nav>
+      <div class="sidebar-section"><div class="section-heading">RECENT RUNS <span id="run-count">0</span></div><div id="sidebar-runs" class="sidebar-runs"></div></div>
+      <div class="sidebar-bottom"><span class="connection-dot" id="connection-dot"></span><span id="connection-label">Checking OpenCode…</span><span class="version">LOCAL</span></div>
+    </aside>
+    <main id="main" tabindex="-1"></main>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
